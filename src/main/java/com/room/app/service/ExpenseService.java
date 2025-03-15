@@ -3,7 +3,6 @@ package com.room.app.service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -14,6 +13,7 @@ import org.springframework.stereotype.Service;
 import com.room.app.dto.Expense;
 import com.room.app.dto.ExpenseRequest;
 import com.room.app.dto.Member;
+import com.room.app.dto.PaymentHistory;
 import com.room.app.dto.User;
 import com.room.app.exception.AccessDeniedException;
 import com.room.app.repository.ExpenseRepository;
@@ -147,35 +147,41 @@ public class ExpenseService {
 
 	@Transactional
 	public Expense clearExpense(Long expenseId, Long memberId, BigDecimal amount) throws ResourceNotFoundException {
-	    Expense expense = expenseRepository.findById(expenseId)
-	            .orElseThrow(() -> new ResourceNotFoundException("Expense not found"));
-	    Member clearingMember = memberRepository.findById(memberId)
-	            .orElseThrow(() -> new ResourceNotFoundException("Member not found"));
+		Expense expense = expenseRepository.findById(expenseId)
+				.orElseThrow(() -> new ResourceNotFoundException("Expense not found"));
+		Member clearingMember = memberRepository.findById(memberId)
+				.orElseThrow(() -> new ResourceNotFoundException("Member not found"));
 
-	    if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-	        throw new IllegalArgumentException("Amount must be greater than zero");
-	    }
+		if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+			throw new IllegalArgumentException("Amount must be greater than zero");
+		}
 
-	    BigDecimal remaining = expense.getAmount().subtract(expense.getClearedAmount());
-	    if (amount.compareTo(remaining) > 0) {
-	        throw new IllegalArgumentException("Amount exceeds remaining balance of " + remaining);
-	    }
+		BigDecimal remaining = expense.getAmount().subtract(expense.getClearedAmount());
+		if (amount.compareTo(remaining) > 0) {
+			throw new IllegalArgumentException("Amount exceeds remaining balance of " + remaining);
+		}
 
-	    BigDecimal newClearedAmount = expense.getClearedAmount().add(amount);
-	    boolean fullyCleared = newClearedAmount.compareTo(expense.getAmount()) >= 0;
+		
+		PaymentHistory payment = new PaymentHistory();
+		payment.setExpense(expense);
+		payment.setAmount(amount);
+		payment.setClearedBy(clearingMember);
+		payment.setClearedAt(LocalDateTime.now());
 
-	    // Track last payment amount
-	    expense.setLastClearedAmount(amount);  // Add this line
-	    expense.setClearedAmount(newClearedAmount);
-	    expense.setClearedBy(clearingMember);
-	    expense.setClearedAt(LocalDateTime.now());
-	    expense.setCleared(fullyCleared);
+	
+		BigDecimal newClearedAmount = expense.getClearedAmount().add(amount);
+		expense.setClearedAmount(newClearedAmount);
+		expense.getPaymentHistories().add(payment);
 
-	    if (!fullyCleared) {
-	        expense.setLastClearedBy(clearingMember);
-	        expense.setLastClearedAt(LocalDateTime.now());
-	    }
+		
+		boolean fullyCleared = newClearedAmount.compareTo(expense.getAmount()) >= 0;
+		expense.setCleared(fullyCleared);
 
-	    return expenseRepository.save(expense);
+		if (fullyCleared) {
+			expense.setClearedBy(clearingMember);
+			expense.setClearedAt(LocalDateTime.now());
+		}
+
+		return expenseRepository.save(expense);
 	}
 }

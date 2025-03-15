@@ -1,6 +1,16 @@
 package com.room.app.dto;
 
-import jakarta.persistence.*;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "member")
@@ -13,6 +23,9 @@ public class Member {
 	@Column(unique = true, nullable = false)
 	private String name;
 
+	@OneToMany(mappedBy = "member")
+	@JsonIgnore
+	private List<Expense> expenses;
 	@Column(unique = true)
 	private String mobileNumber;
 	@Column(name = "user_id", unique = true)

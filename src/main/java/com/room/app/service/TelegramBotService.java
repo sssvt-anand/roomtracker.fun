@@ -418,18 +418,17 @@ public class TelegramBotService {
 	}
 
 	private Map<String, Map<String, BigDecimal>> getClearedSummaryByMember() {
-		return expenseRepository.findAllActive().stream()
-				// Include all partial/full clearances
-				.filter(e -> e.getClearedAmount() != null)
+		return expenseRepository.findAllActive().stream().filter(e -> e.getClearedAmount() != null)
 				.filter(e -> e.getClearedAmount().compareTo(BigDecimal.ZERO) > 0)
-				// Critical null safety for clearedBy
-				.filter(e -> e.getClearedBy() != null && e.getClearedBy().getName() != null)
-				// Group by debtor -> payer
-				.collect(Collectors.groupingBy(e -> e.getMember().getName(),
-						Collectors.groupingBy(e -> e.getClearedBy().getName(), // Now safe
-								Collectors.reducing(BigDecimal.ZERO, Expense::getClearedAmount, // Track actual cleared
-																								// amount
-										BigDecimal::add))));
+				.filter(e -> (e.getClearedBy() != null && e.getClearedBy().getName() != null)
+						|| (e.getLastClearedBy() != null && e.getLastClearedBy().getName() != null))
+				.collect(Collectors.groupingBy(e -> e.getMember().getName(), Collectors.groupingBy(e -> {
+					if (e.getClearedBy() != null) {
+						return e.getClearedBy().getName();
+					} else {
+						return e.getLastClearedBy().getName();
+					}
+				}, Collectors.reducing(BigDecimal.ZERO, Expense::getClearedAmount, BigDecimal::add))));
 	}
 
 	public String processMakeAdminCommand(String mobileNumber, Long requesterChatId) {

@@ -3,6 +3,10 @@ package com.room.app.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,6 +15,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 
 @Entity
@@ -22,7 +27,7 @@ public class Expense {
 	private Long id;
 	private String description;
 
-	@Column(name = "is_deleted", columnDefinition = "CHAR(1) DEFAULT 'N'")
+	@Column(name = "is_deleted", columnDefinition = "CHAR(1)")
 	private String isDeleted = "N";
 
 	@ManyToOne
@@ -32,7 +37,7 @@ public class Expense {
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
-	@Column(name = "date") 
+	@Column(name = "date")
 	private LocalDate date;
 
 	private BigDecimal amount;
@@ -48,6 +53,7 @@ public class Expense {
 
 	@ManyToOne
 	@JoinColumn(name = "member_id")
+	@JsonIgnoreProperties({ "paymentHistories", "expenses" })
 	private Member member;
 
 	@ManyToOne
@@ -57,6 +63,10 @@ public class Expense {
 	private LocalDateTime clearedAt;
 	@Column(name = "remaining_amount", precision = 10, scale = 2)
 	private BigDecimal remainingAmount;
+
+	@OneToMany(mappedBy = "expense")
+	@JsonIgnore
+	private List<PaymentHistory> paymentHistories;
 
 	@PrePersist
 	protected void initializeAmounts() {
@@ -74,10 +84,9 @@ public class Expense {
 
 	@Column(name = "last_cleared_at")
 	private LocalDateTime lastClearedAt;
-	
+
 	@Column(name = "last_cleared_amount", precision = 10, scale = 2)
 	private BigDecimal lastClearedAmount = BigDecimal.ZERO;
-
 
 	public Member getLastClearedBy() {
 		return lastClearedBy;
@@ -237,6 +246,14 @@ public class Expense {
 
 	public void setLastClearedAmount(BigDecimal lastClearedAmount) {
 		this.lastClearedAmount = lastClearedAmount;
+	}
+
+	public List<PaymentHistory> getPaymentHistories() {
+		return paymentHistories;
+	}
+
+	public void setPaymentHistories(List<PaymentHistory> paymentHistories) {
+		this.paymentHistories = paymentHistories;
 	}
 
 }
