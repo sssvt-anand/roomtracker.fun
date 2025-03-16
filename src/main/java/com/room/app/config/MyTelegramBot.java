@@ -57,22 +57,25 @@ public class MyTelegramBot extends TelegramLongPollingBot {
 	}
 
 	private void handleMessage(Long userId, Long chatId, Message message) {
-		try {
+	    try {
+	        if (message.getReplyToMessage() != null) {
+	            handleReply(message, chatId);
+	            return;
+	        }
 
-			if (message.getReplyToMessage() != null) {
-				handleReply(message, chatId);
-				return;
-			}
+	        String text = message.getText();
+	        String[] parts = text.split(" ", 2);
+	        String commandPart = parts[0].toLowerCase();
 
-			if (message.getText().startsWith("/")) {
-				handleCommand(userId, chatId, message);
-			} else {
-				Expense expense = telegramBotService.processExpenseMessage(message.getText(), userId);
-				sendExpenseConfirmation(chatId, expense);
-			}
-		} catch (Exception e) {
-			sendErrorMessage(chatId, e.getMessage());
-		}
+	        if (commandPart.startsWith("/") || commandPart.equals("full")) {
+	            handleCommand(userId, chatId, message);
+	        } else {
+	            Expense expense = telegramBotService.processExpenseMessage(text, userId);
+	            sendExpenseConfirmation(chatId, expense);
+	        }
+	    } catch (Exception e) {
+	        sendErrorMessage(chatId, e.getMessage());
+	    }
 	}
 
 	private void sendExpenseConfirmation(Long chatId, Expense expense) {
@@ -229,7 +232,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
 			case "/members" -> sendResponse(chatId, telegramBotService.listAllMembers());
 			case "/t" -> sendResponse(chatId, telegramBotService.getAllExpenses());
 			case "/summary" -> sendResponse(chatId, telegramBotService.getExpenseSummary());
-			case "/full" -> sendResponse(chatId, telegramBotService.getDetailedExpenseSummary());
+			case "full" -> sendResponse(chatId, telegramBotService.getDetailedExpenseSummary());
 			case "/help" -> sendResponse(chatId, getHelpMessage());
 			default -> sendResponse(chatId, "❌ Unknown command. Use /help");
 			}
