@@ -195,52 +195,55 @@ public class MyTelegramBot extends TelegramLongPollingBot {
 	private void handleCommand(Long userId, Long chatId, Message message) {
 		String[] parts = message.getText().split(" ", 2);
 		String command = parts[0].toLowerCase();
-		String arguments = parts.length > 1 ? parts[1] : ""; // Extract arguments
-
+		String arguments = parts.length > 1 ? parts[1] : "";
+	
 		try {
 			String response;
-
-			switch (command) {
-			case "/addexpense" -> {
-				try {
-					Expense expense = telegramBotService.processExpenseMessage(arguments, userId);
-
-					String responseText = String.format("""
-							✅ Expense Added
-							📌 %s
-							💰 ₹%.2f
-							📅 %s
-							👤 %s""", expense.getDescription(), expense.getAmount(),
-							expense.getDate().format(DATE_FORMATTER), expense.getMember().getName());
-
-					Message sentMessage = execute(
-							SendMessage.builder().chatId(chatId.toString()).text(responseText).build());
-
-					expense.setMessageId(sentMessage.getMessageId());
-					telegramBotService.saveExpense(expense);
-					response = responseText;
-
-				} catch (Exception e) {
-					response = "⚠️ Error: " + e.getMessage();
-					log.error("Expense error", e);
+	
+			response = switch (command) {
+				case "/addexpense" -> {
+					try {
+						Expense expense = telegramBotService.processExpenseMessage(arguments, userId);
+						String responseText = String.format("""
+								✅ Expense Added
+								📌 %s
+								💰 ₹%.2f
+								📅 %s
+								👤 %s""", expense.getDescription(), expense.getAmount(),
+								expense.getDate().format(DATE_FORMATTER), expense.getMember().getName());
+						Message sentMessage = execute(
+								SendMessage.builder().chatId(chatId.toString()).text(responseText).build());
+						expense.setMessageId(sentMessage.getMessageId());
+						telegramBotService.saveExpense(expense);
+						yield responseText;
+					} catch (Exception e) {
+						log.error("Expense error", e);
+						yield "⚠️ Error: " + e.getMessage();
+					}
 				}
-			}
-
-			case "/register" -> handleRegistration(userId, chatId, parts);
-			case "/makeadmin" -> handleAdminPromotion(chatId, arguments); // ✅ Fixed here
-			case "/initadmin" -> sendResponse(chatId, telegramBotService.initAdmin(chatId));
-			case "/members" -> sendResponse(chatId, telegramBotService.listAllMembers());
-			case "/t" -> sendResponse(chatId, telegramBotService.getAllExpenses());
-			case "/summary" -> sendResponse(chatId, telegramBotService.getExpenseSummary());
-			case "full" -> sendResponse(chatId, telegramBotService.getDetailedExpenseSummary());
-			case "/help" -> sendResponse(chatId, getHelpMessage());
-			default -> sendResponse(chatId, "❌ Unknown command. Use /help");
+				case "/register" -> {
+					handleRegistration(userId, chatId, parts);
+					yield ""; // No direct response; handled in method
+				}
+				case "/makeadmin" -> {
+					handleAdminPromotion(chatId, arguments);
+					yield ""; // No direct response
+				}
+				case "/initadmin" -> telegramBotService.initAdmin(chatId);
+				case "/members" -> telegramBotService.listAllMembers();
+				case "/t" -> telegramBotService.getAllExpenses();
+				case "/summary" -> telegramBotService.getExpenseSummary();
+				case "full" -> telegramBotService.getDetailedExpenseSummary();
+				case "/help" -> getHelpMessage();
+				default -> "❌ Unknown command. Use /help";
+			};
+			if (!response.isEmpty()) {
+				sendResponse(chatId, response);
 			}
 		} catch (Exception e) {
 			log.error("Command error: {}", e.getMessage());
 		}
 	}
-
 	private String getHelpMessage() {
 		return """
 				📖 *Available Commands*
